@@ -22,7 +22,7 @@ public class UrlModule : CarterModule
             string chunk = Convert.ToBase64String(hashBytes).Replace("/", "-").Replace("+", "_").Substring(0, 8);
 
             IDatabase db = redis.GetDatabase();
-            string baseUrl = "https://encurtadorurl-c3lm.onrender.com/";
+            string baseUrl = "https://encurtadorurl-c3lm.onrender.com";
             string shortUrlResult = $"{baseUrl}/{chunk}";
 
             RedisValue existingUrl = await db.StringGetAsync(chunk);
