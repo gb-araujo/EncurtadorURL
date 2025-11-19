@@ -92,6 +92,10 @@ submitButton.addEventListener("click", async () => {
   }
 });
 
+if (!longUrl.startsWith("http://") && !longUrl.startsWith("https://")) {
+  longUrl = "https://" + longUrl;
+}
+
 // Botão copiar
 copyButton.addEventListener("click", async () => {
   const textToCopy = shortLink.textContent;
