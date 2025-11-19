@@ -27,7 +27,7 @@ builder.Services.AddCors(options =>
         builder =>
         {
             builder.WithOrigins("https://gabrielaraujo.app",
-                                "https://encurtador-omega.vercel.app/",
+                                "https://encurtador-omega.vercel.app",
                                 "http://localhost:5001")
                    .AllowAnyMethod()
                    .AllowAnyHeader();
