@@ -1,4 +1,6 @@
-// Seleciona os elementos principais usando seus IDs
+// index.js — substitua o seu por este
+
+// elementos
 const urlInput = document.getElementById("url");
 const submitButton = document.getElementById("submitButton");
 const resultParagraph = document.getElementById("urlResult");
@@ -8,107 +10,175 @@ const shortLink = document.getElementById("shortLink");
 const copyButton = document.getElementById("copyButton");
 const copyMessage = document.getElementById("message");
 
-const API_URL = "https://encurtadorurl-c3lm.onrender.com/urls/";
+const API_ORIGIN = "https://encurtadorurl-c3lm.onrender.com";
+const API_URL = API_ORIGIN + "/urls/";
 
-// Handler do botão
+// util: normaliza e valida
+function normalizeUrl(input) {
+  let u = input.trim();
+
+  // remove espaços invs
+  u = u.replace(/\s+/g, "");
+
+  // se já tem protocolo ok, se não adiciona https://
+  if (!/^https?:\/\//i.test(u)) {
+    u = "https://" + u;
+  }
+
+  // tenta construir URL para validar
+  try {
+    const parsed = new URL(u);
+    // opcional: restringir esquemas
+    if (!["http:", "https:"].includes(parsed.protocol))
+      throw new Error("Protocolo inválido");
+    return parsed.toString();
+  } catch (err) {
+    return null;
+  }
+}
+
+// evento enviar
 submitButton.addEventListener("click", async () => {
-  const longUrl = urlInput.value.trim();
-  resultParagraph.textContent = "Enviando...";
-  resultParagraph.style.color = "gray";
+  // desativa botão p/ evitar multi-submit
+  submitButton.disabled = true;
 
-  // limpa o bloco quando reenvia
+  // pega e normaliza
+  const raw = urlInput.value || "";
+  resultParagraph.style.color = "gray";
+  resultParagraph.textContent = "Enviando...";
   resultContainer.style.display = "none";
   shortLink.textContent = "";
   shortLink.href = "#";
 
-  if (!longUrl) {
-    resultParagraph.textContent = "Por favor, insira uma URL válida.";
+  if (!raw.trim()) {
     resultParagraph.style.color = "red";
+    resultParagraph.textContent = "Por favor, insira uma URL.";
+    submitButton.disabled = false;
     return;
   }
 
+  const longUrl = normalizeUrl(raw);
+  console.log("INPUT RAW:", raw, " -> normalized:", longUrl);
+
+  if (!longUrl) {
+    resultParagraph.style.color = "red";
+    resultParagraph.textContent = "Formato de URL inválido.";
+    submitButton.disabled = false;
+    return;
+  }
+
+  const payload = { longUrl };
+
   try {
+    console.log("Enviando payload:", payload);
+
     const response = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       mode: "cors",
-      body: JSON.stringify({ longUrl }),
+      body: JSON.stringify(payload),
     });
 
-    // --- LEITURA DO BODY EM TEXTO PARA EVITAR ERROS DE JSON ---
+    // sempre logue o status e o body cru pra debugar
     const text = await response.text();
+    console.log("Status:", response.status, "Resposta bruta:", text);
 
     if (!text) {
-      resultParagraph.textContent = "Erro: A API retornou resposta vazia.";
       resultParagraph.style.color = "red";
-      console.error("Resposta vazia");
+      resultParagraph.textContent = "Erro: resposta vazia da API.";
+      submitButton.disabled = false;
       return;
     }
 
     if (text.startsWith("<")) {
-      resultParagraph.textContent =
-        "Erro: A API retornou HTML ao invés de JSON. Verifique o servidor.";
       resultParagraph.style.color = "red";
-      console.error("HTML recebido:", text);
+      resultParagraph.textContent =
+        "Erro: API retornou HTML (verificar servidor).";
+      submitButton.disabled = false;
       return;
     }
 
     let data;
     try {
       data = JSON.parse(text);
-    } catch (err) {
-      resultParagraph.textContent = "Erro: Resposta inválida da API.";
+    } catch (e) {
       resultParagraph.style.color = "red";
+      resultParagraph.textContent = "Erro: resposta JSON inválida.";
       console.error("JSON inválido:", text);
+      submitButton.disabled = false;
       return;
     }
 
     if (!response.ok) {
-      resultParagraph.textContent = `Erro ${response.status}: Falha ao criar a URL.`;
       resultParagraph.style.color = "red";
+      resultParagraph.textContent = `Erro ${response.status}: ${
+        data?.message || "Falha ao criar URL."
+      }`;
       console.error("Erro da API:", data);
+      submitButton.disabled = false;
       return;
     }
 
-    // --- SUCESSO ---
-    const shortUrl = data.shortUrl;
+    // pega shortUrl e garante que seja uma URL absoluta
+    let returned = data.shortUrl || data.short || data.url || "";
+    console.log("shortUrl bruto do backend:", returned);
 
-    resultParagraph.textContent = "URL gerada com sucesso!";
+    if (!returned) {
+      resultParagraph.style.color = "red";
+      resultParagraph.textContent = "API não retornou shortUrl.";
+      submitButton.disabled = false;
+      return;
+    }
+
+    // se backend devolver algo relativo (ex: "/aGB3blYR" ou "aGB3blYR"), transforma em absoluto
+    let finalShort;
+    try {
+      if (
+        /^\/|^[A-Za-z0-9_-]{4,}$/.test(returned) &&
+        !/^https?:\/\//i.test(returned)
+      ) {
+        // tenta resolver com o origin do serviço
+        finalShort = new URL(returned, API_ORIGIN).toString();
+      } else {
+        finalShort = new URL(returned).toString();
+      }
+    } catch (err) {
+      // fallback: concatena
+      finalShort =
+        API_ORIGIN + (returned.startsWith("/") ? returned : "/" + returned);
+    }
+
+    // atualiza UI
     resultParagraph.style.color = "green";
-
-    // Mostra o container com o link
+    resultParagraph.textContent = "URL gerada com sucesso!";
     resultContainer.style.display = "flex";
+    shortLink.href = finalShort;
+    shortLink.textContent = finalShort;
 
-    // Torna o link clicável
-    shortLink.href = shortUrl;
-    shortLink.textContent = shortUrl;
-
-    console.log("API Response:", data);
+    console.log("shortUrl final exibido:", finalShort);
   } catch (error) {
-    resultParagraph.textContent =
-      "Erro de Rede: Verifique se a API está rodando ou se o CORS está liberado.";
+    console.error("Fetch error:", error);
     resultParagraph.style.color = "red";
-    console.error("Fetch Error:", error);
+    resultParagraph.textContent = "Erro de rede. Verifique console e CORS.";
+  } finally {
+    submitButton.disabled = false;
   }
 });
 
-if (!longUrl.startsWith("http://") && !longUrl.startsWith("https://")) {
-  longUrl = "https://" + longUrl;
-}
-
-// Botão copiar
+// copiar
 copyButton.addEventListener("click", async () => {
   const textToCopy = shortLink.textContent;
-
+  if (!textToCopy) return;
   try {
     await navigator.clipboard.writeText(textToCopy);
-
     copyMessage.style.opacity = 1;
-
-    setTimeout(() => {
-      copyMessage.style.opacity = 0;
-    }, 1500);
+    setTimeout(() => (copyMessage.style.opacity = 0), 1500);
   } catch (err) {
     console.error("Erro ao copiar:", err);
   }
+});
+
+// permite Enter no input
+urlInput.addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter") submitButton.click();
 });
