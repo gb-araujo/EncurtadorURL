@@ -26,8 +26,8 @@ builder.Services.AddCors(options =>
     options.AddPolicy("PermitirFrontEnd",
         builder =>
         {
-            builder.WithOrigins("http://127.0.0.1:5500", // porta do live server
-                                "https://localhost:44300",
+            builder.WithOrigins("https://gabrielaraujo.app",
+                                "https://encurtador-omega.vercel.app/",
                                 "http://localhost:5001")
                    .AllowAnyMethod()
                    .AllowAnyHeader();
