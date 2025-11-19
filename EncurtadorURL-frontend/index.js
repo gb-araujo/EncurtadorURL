@@ -3,7 +3,7 @@ const urlInput = document.getElementById("url");
 const submitButton = document.getElementById("submitButton");
 const resultParagraph = document.getElementById("urlResult");
 
-const API_URL = "https://localhost:7014/urls/";
+const API_URL = "https://encurtadorurl-c3lm.onrender.com/urls/";
 
 // Handler do botão
 submitButton.addEventListener("click", async () => {
