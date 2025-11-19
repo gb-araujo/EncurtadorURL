@@ -1,0 +1,32 @@
+## .NET CORE / C# / ASP.NET / MINIMAL APIs ##
+
+# Pastas de saída padrão (Binários e Arquivos de Build)
+[Bb]in/
+[Oo]bj/
+
+# Arquivos de packages e dependências
+**/packages/
+**/node_modules/
+**/bower_components/
+
+# Visual Studio e arquivos temporários
+*.suo
+*.user
+*.userprefs
+*.[Aa]utogen.cs
+
+# Arquivos de cache e indexação da IDE (Crucial para Rider e VS)
+.vs/
+.idea/
+
+# Arquivos de publish e deploy
+publish/
+[Tt]est[Rr]esults/
+.tmp/
+.nupkg/
+*.exe
+
+# Arquivos de configuração de ambiente e variáveis secretas (MUITO IMPORTANTE!)
+*.log
+.env
+.env.*
