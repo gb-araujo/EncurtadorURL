@@ -23,20 +23,20 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 // configuração do CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("PermitirFrontEnd",
+    options.AddPolicy("PermitirFrontEnd", 
         builder =>
         {
-            builder.WithOrigins("https://gabrielaraujo.app",
-                                "https://encurtador-omega.vercel.app",
-                                "http://localhost:5001")
+            builder.WithOrigins("https://encurtador-omega.vercel.app", 
+                                "https://encurtadorurl-c3lm.onrender.com", // URL do Render
+                                "http://127.0.0.1:5500")           // Localhost
                    .AllowAnyMethod()
                    .AllowAnyHeader();
-
         });
 });
 
 
 var app = builder.Build();
+app.UseCors("PermitirFrontEnd");
 
 
 if (app.Environment.IsDevelopment())
@@ -44,7 +44,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseCors("PermitirFrontEnd");
+
 
 app.MapCarter();
 
