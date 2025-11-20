@@ -13,9 +13,27 @@ const isLocal =
   window.location.hostname === "localhost" ||
   window.location.hostname === "127.0.0.1";
 
-// Se for local, usa localhost:7000 (backend .NET). Caso contrário, usa a origem atual.
-const API_BASE = isLocal ? "https://localhost:7000" : window.location.origin;
+// Configuração por ambiente
+const API_CONFIG = {
+  development: "https://localhost:7000",
+  production: "https://encurtadorurl-c3lm.onrender.com", // ← SEU BACKEND NO RENDER
+};
+
+const getApiBase = () => {
+  if (isLocal) return API_CONFIG.development;
+
+  // Se estiver no Vercel (frontend), usa o backend no Render
+  if (window.location.hostname.includes("vercel.app")) {
+    return API_CONFIG.production;
+  }
+
+  // Fallback
+  return window.location.origin;
+};
+
+const API_BASE = getApiBase();
 const API_URL = `${API_BASE}/urls/`;
+console.log("🔗 API Base:", API_BASE); // Para debug
 // --- FIM DA URL DINÂMICA ---
 
 // util: normaliza e valida
