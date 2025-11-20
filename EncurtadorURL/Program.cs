@@ -7,13 +7,14 @@ var builder = WebApplication.CreateBuilder(args);
 // Configuração
 builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
 
-// Redis
-var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+// Redis - PRIORIDADE para variável de ambiente
+var redisConnectionString = builder.Configuration.GetValue<string>("REDIS_CONNECTION_STRING")
+                         ?? builder.Configuration.GetConnectionString("Redis")
+                         ?? "localhost:6379";
 
-if (string.IsNullOrEmpty(redisConnectionString))
+if (string.IsNullOrEmpty(redisConnectionString) || redisConnectionString == "localhost:6379")
 {
-    Console.WriteLine($"AVISO: Usando o default localhost:6379");
-    redisConnectionString = "localhost:6379";
+    Console.WriteLine($"⚠️  AVISO: Redis usando default localhost:6379 - Configure REDIS_CONNECTION_STRING para produção");
 }
 
 // Add services to the container.
@@ -29,10 +30,12 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     configuration.SyncTimeout = 10000;
     configuration.AbortOnConnectFail = false;
     configuration.ReconnectRetryPolicy = new LinearRetry(5000);
+
+    Console.WriteLine($"🔗 Conectando ao Redis: {redisConnectionString}");
     return ConnectionMultiplexer.Connect(configuration);
 });
 
-// CORS configuration
+// CORS configuration - MANTENHA como está
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -50,7 +53,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Middleware
+// Middleware - MANTENHA como está
 app.UseRouting();
 app.UseCors();
 
@@ -79,7 +82,25 @@ if (app.Environment.IsDevelopment())
 
 app.MapCarter();
 
-app.MapGet("/health", () => Results.Ok(new { status = "Healthy", timestamp = DateTime.UtcNow }))
-   .WithTags("Health");
+app.MapGet("/health", () =>
+{
+    var redisStatus = "Unknown";
+    try
+    {
+        var redis = app.Services.GetService<IConnectionMultiplexer>();
+        redisStatus = redis?.IsConnected == true ? "Connected" : "Disconnected";
+    }
+    catch
+    {
+        redisStatus = "Error";
+    }
+
+    return Results.Ok(new
+    {
+        status = "Healthy",
+        timestamp = DateTime.UtcNow,
+        redis = redisStatus
+    });
+}).WithTags("Health");
 
 app.Run();
