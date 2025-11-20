@@ -4,70 +4,77 @@ using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configuração
 builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
 
-// Redis - PRIORIDADE para variável de ambiente
-var redisConnectionString = builder.Configuration.GetValue<string>("REDIS_CONNECTION_STRING")
-                         ?? builder.Configuration.GetConnectionString("Redis")
-                         ?? "localhost:6379";
-
-if (string.IsNullOrEmpty(redisConnectionString) || redisConnectionString == "localhost:6379")
-{
-    Console.WriteLine($"⚠️  AVISO: Redis usando default localhost:6379 - Configure REDIS_CONNECTION_STRING para produção");
-}
+var redisConnectionString = GetRedisConnectionString(builder);
+Console.WriteLine($"🔗 Redis: {redisConnectionString}");
 
 // Add services to the container.
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
 builder.Services.AddCarter();
 
-// Configure Redis
+// Redis
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
-    var configuration = ConfigurationOptions.Parse(redisConnectionString);
-    configuration.ConnectTimeout = 10000;
-    configuration.SyncTimeout = 10000;
-    configuration.AbortOnConnectFail = false;
-    configuration.ReconnectRetryPolicy = new LinearRetry(5000);
+    try
+    {
+        Console.WriteLine($"🔄 Conectando ao Redis: {redisConnectionString}");
 
-    Console.WriteLine($"🔗 Conectando ao Redis: {redisConnectionString}");
-    return ConnectionMultiplexer.Connect(configuration);
+        var configuration = ConfigurationOptions.Parse(redisConnectionString);
+        configuration.ConnectTimeout = 5000;
+        configuration.SyncTimeout = 5000;
+        configuration.AbortOnConnectFail = false;
+
+        var redis = ConnectionMultiplexer.Connect(configuration);
+        Console.WriteLine("✅ Redis conectado!");
+        return redis;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ ERRO Redis: {ex.Message}");
+        if (builder.Environment.IsDevelopment())
+        {
+            Console.WriteLine("💡 Dica para desenvolvimento:");
+            Console.WriteLine("   - Execute: docker run -d -p 6379:6379 redis:alpine");
+            Console.WriteLine("   - Ou configure em appsettings.Development.json:");
+            Console.WriteLine("     \"ConnectionStrings\": { \"Redis\": \"localhost:6379\" }");
+        }
+        throw;
+    }
 });
 
-// CORS configuration - MANTENHA como está
+// CORS
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        var allowedOrigins = builder.Configuration.GetSection("AppSettings:AllowedOrigins").Get<string[]>()
-                          ?? new[] { "http://localhost:3000", "https://localhost:5000" };
-
-        policy.WithOrigins(allowedOrigins)
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials()
-              .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
+        policy.WithOrigins(
+            "http://127.0.0.1:5500",    // Live Server
+            "http://localhost:3000",    // React/Vue
+            "http://localhost:8080",    // Vite
+            "http://localhost:5500",    // Outro Live Server
+            "https://encurtador-omega.vercel.app"  // Seu frontend produção
+        )
+        .AllowAnyMethod()
+        .AllowAnyHeader()
+        .AllowCredentials();
     });
 });
 
 var app = builder.Build();
 
-// Middleware - MANTENHA como está
+// Middleware
 app.UseRouting();
 app.UseCors();
 
-// Handle preflight requests
 app.Use(async (context, next) =>
 {
     if (context.Request.Method == "OPTIONS")
     {
-        context.Response.Headers.Add("Access-Control-Allow-Origin",
-            context.Request.Headers["Origin"]);
-        context.Response.Headers.Add("Access-Control-Allow-Methods",
-            "GET, POST, PUT, DELETE, OPTIONS");
-        context.Response.Headers.Add("Access-Control-Allow-Headers",
-            "Content-Type, Authorization, X-Requested-With, Origin, Accept");
+        context.Response.Headers.Add("Access-Control-Allow-Origin", context.Request.Headers["Origin"]);
+        context.Response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        context.Response.Headers.Add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Origin, Accept");
         context.Response.StatusCode = 200;
         await context.Response.CompleteAsync();
         return;
@@ -82,25 +89,39 @@ if (app.Environment.IsDevelopment())
 
 app.MapCarter();
 
-app.MapGet("/health", () =>
+// Health check
+app.MapGet("/health", () => Results.Ok(new
 {
-    var redisStatus = "Unknown";
-    try
-    {
-        var redis = app.Services.GetService<IConnectionMultiplexer>();
-        redisStatus = redis?.IsConnected == true ? "Connected" : "Disconnected";
-    }
-    catch
-    {
-        redisStatus = "Error";
-    }
-
-    return Results.Ok(new
-    {
-        status = "Healthy",
-        timestamp = DateTime.UtcNow,
-        redis = redisStatus
-    });
-}).WithTags("Health");
+    status = "Healthy",
+    timestamp = DateTime.UtcNow,
+    environment = app.Environment.EnvironmentName
+}));
 
 app.Run();
+
+static string GetRedisConnectionString(WebApplicationBuilder builder)
+{
+
+    var envConnectionString = builder.Configuration.GetValue<string>("REDIS_CONNECTION_STRING");
+    if (!string.IsNullOrEmpty(envConnectionString))
+    {
+        Console.WriteLine("📦 Usando Redis de variável de ambiente");
+        return envConnectionString;
+    }
+
+    var configConnectionString = builder.Configuration.GetConnectionString("Redis");
+    if (!string.IsNullOrEmpty(configConnectionString))
+    {
+        Console.WriteLine("📁 Usando Redis de appsettings.json");
+        return configConnectionString;
+    }
+
+    // 3. Fallback desenvolvimento
+    if (builder.Environment.IsDevelopment())
+    {
+        Console.WriteLine("🔧 Desenvolvimento: usando localhost:6379");
+        return "localhost:6379";
+    }
+
+    throw new Exception("❌ String de conexão Redis não configurada");
+}
