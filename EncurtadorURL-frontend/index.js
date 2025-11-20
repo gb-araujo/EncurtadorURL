@@ -1,5 +1,3 @@
-// index.js — substitua o seu por este
-
 // elementos
 const urlInput = document.getElementById("url");
 const submitButton = document.getElementById("submitButton");
@@ -10,25 +8,27 @@ const shortLink = document.getElementById("shortLink");
 const copyButton = document.getElementById("copyButton");
 const copyMessage = document.getElementById("message");
 
-const API_ORIGIN = "https://encurtadorurl-c3lm.onrender.com";
-const API_URL = API_ORIGIN + "/urls/";
+// --- URL DINÂMICA DA API ---
+const isLocal =
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1";
+
+// Se for local, usa localhost:7000 (backend .NET). Caso contrário, usa a origem atual.
+const API_BASE = isLocal ? "https://localhost:7000" : window.location.origin;
+const API_URL = `${API_BASE}/urls/`;
+// --- FIM DA URL DINÂMICA ---
 
 // util: normaliza e valida
 function normalizeUrl(input) {
   let u = input.trim();
-
-  // remove espaços invs
   u = u.replace(/\s+/g, "");
 
-  // se já tem protocolo ok, se não adiciona https://
   if (!/^https?:\/\//i.test(u)) {
     u = "https://" + u;
   }
 
-  // tenta construir URL para validar
   try {
     const parsed = new URL(u);
-    // opcional: restringir esquemas
     if (!["http:", "https:"].includes(parsed.protocol))
       throw new Error("Protocolo inválido");
     return parsed.toString();
@@ -39,10 +39,7 @@ function normalizeUrl(input) {
 
 // evento enviar
 submitButton.addEventListener("click", async () => {
-  // desativa botão p/ evitar multi-submit
   submitButton.disabled = true;
-
-  // pega e normaliza
   const raw = urlInput.value || "";
   resultParagraph.style.color = "gray";
   resultParagraph.textContent = "Enviando...";
@@ -67,33 +64,24 @@ submitButton.addEventListener("click", async () => {
     return;
   }
 
-  const payload = { longUrl };
+  const payload = { LongUrl: longUrl };
 
   try {
     console.log("Enviando payload:", payload);
+    console.log("API URL:", API_URL);
 
     const response = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      mode: "cors",
       body: JSON.stringify(payload),
     });
 
-    // sempre logue o status e o body cru pra debugar
     const text = await response.text();
     console.log("Status:", response.status, "Resposta bruta:", text);
 
     if (!text) {
       resultParagraph.style.color = "red";
       resultParagraph.textContent = "Erro: resposta vazia da API.";
-      submitButton.disabled = false;
-      return;
-    }
-
-    if (text.startsWith("<")) {
-      resultParagraph.style.color = "red";
-      resultParagraph.textContent =
-        "Erro: API retornou HTML (verificar servidor).";
       submitButton.disabled = false;
       return;
     }
@@ -119,8 +107,7 @@ submitButton.addEventListener("click", async () => {
       return;
     }
 
-    // pega shortUrl e garante que seja uma URL absoluta
-    let returned = data.shortUrl || data.short || data.url || "";
+    let returned = data.shortUrl || "";
     console.log("shortUrl bruto do backend:", returned);
 
     if (!returned) {
@@ -130,36 +117,18 @@ submitButton.addEventListener("click", async () => {
       return;
     }
 
-    // se backend devolver algo relativo (ex: "/aGB3blYR" ou "aGB3blYR"), transforma em absoluto
-    let finalShort;
-    try {
-      if (
-        /^\/|^[A-Za-z0-9_-]{4,}$/.test(returned) &&
-        !/^https?:\/\//i.test(returned)
-      ) {
-        // tenta resolver com o origin do serviço
-        finalShort = new URL(returned, API_ORIGIN).toString();
-      } else {
-        finalShort = new URL(returned).toString();
-      }
-    } catch (err) {
-      // fallback: concatena
-      finalShort =
-        API_ORIGIN + (returned.startsWith("/") ? returned : "/" + returned);
-    }
-
-    // atualiza UI
+    // Usa a URL retornada pelo backend diretamente
     resultParagraph.style.color = "green";
     resultParagraph.textContent = "URL gerada com sucesso!";
     resultContainer.style.display = "flex";
-    shortLink.href = finalShort;
-    shortLink.textContent = finalShort;
+    shortLink.href = returned;
+    shortLink.textContent = returned;
 
-    console.log("shortUrl final exibido:", finalShort);
+    console.log("shortUrl final exibido:", returned);
   } catch (error) {
     console.error("Fetch error:", error);
     resultParagraph.style.color = "red";
-    resultParagraph.textContent = "Erro de rede. Verifique console e CORS.";
+    resultParagraph.textContent = "Erro de rede. Verifique console.";
   } finally {
     submitButton.disabled = false;
   }

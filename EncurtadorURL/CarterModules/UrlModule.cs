@@ -2,18 +2,25 @@
 using System.Security.Cryptography;
 using System.Text;
 using StackExchange.Redis;
-using Microsoft.AspNetCore.Http; // Para StatusCodes
-using EncurtadorURL.DTOs; // Presumindo que você criou esta pasta
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 
 namespace EncurtadorURL.CarterModules;
 
 public class UrlModule : CarterModule
 {
+    private readonly string _baseUrl;
+
+    public UrlModule(IOptions<AppSettings> appSettings) : base()
+    {
+        _baseUrl = appSettings.Value.BaseUrl;
+    }
+
     public override void AddRoutes(IEndpointRouteBuilder app)
     {
-        var urls = app.MapGroup("/urls");
+        var urls = app.MapGroup("/urls/");
 
-        urls.MapPost("/", async (CreateShortUrlRequest req, IConnectionMultiplexer redis) =>
+        urls.MapPost("/", async (CreateShortUrlRequest req, IConnectionMultiplexer redis, IOptions<AppSettings> appSettings) =>
         {
             using var sha256 = SHA256.Create();
             var inputBytes = Encoding.UTF8.GetBytes(req.LongUrl);
@@ -22,7 +29,7 @@ public class UrlModule : CarterModule
             string chunk = Convert.ToBase64String(hashBytes).Replace("/", "-").Replace("+", "_").Substring(0, 8);
 
             IDatabase db = redis.GetDatabase();
-            string baseUrl = "https://encurtadorurl-c3lm.onrender.com";
+            string baseUrl = appSettings.Value.BaseUrl;
             string shortUrlResult = $"{baseUrl}/{chunk}";
 
             RedisValue existingUrl = await db.StringGetAsync(chunk);
@@ -48,7 +55,7 @@ public class UrlModule : CarterModule
             {
                 return Results.Redirect(longUrlValue.ToString());
             }
-        }).ExcludeFromDescription(); 
+        }).ExcludeFromDescription();
     }
 }
 

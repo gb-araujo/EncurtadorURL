@@ -1,14 +1,18 @@
 using Carter;
+using EncurtadorURL;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
-const string RedisConnectionStringName = "REDIS_CONNECTION_STRING";
-var redisConnectionString = builder.Configuration.GetValue<string>(RedisConnectionStringName);
+// Configuração
+builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
+
+// Redis
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
 
 if (string.IsNullOrEmpty(redisConnectionString))
 {
-    Console.WriteLine($"AVISO: Usando o default localhost:6379, defina {RedisConnectionStringName} para produção.");
+    Console.WriteLine($"AVISO: Usando o default localhost:6379");
     redisConnectionString = "localhost:6379";
 }
 
@@ -17,7 +21,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
 builder.Services.AddCarter();
 
-// Configure Redis with better settings
+// Configure Redis
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
     var configuration = ConfigurationOptions.Parse(redisConnectionString);
@@ -28,38 +32,29 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     return ConnectionMultiplexer.Connect(configuration);
 });
 
-// Enhanced CORS configuration
+// CORS configuration
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins(
-            "https://encurtador-omega.vercel.app",
-            "https://encurtadorurl-c3lm.onrender.com",
-            "http://127.0.0.1:5500",
-            "http://localhost:3000",
-            "http://localhost:8080",
-            "http://localhost:5500"
-        )
-        .AllowAnyMethod()
-        .AllowAnyHeader()
-        .AllowCredentials()
-        .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
+        var allowedOrigins = builder.Configuration.GetSection("AppSettings:AllowedOrigins").Get<string[]>()
+                          ?? new[] { "http://localhost:3000", "https://localhost:5000" };
 
-        // For more permissive setup (use carefully):
-        // policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials()
+              .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
     });
 });
 
 var app = builder.Build();
 
-// CRITICAL: Correct middleware order
+// Middleware
 app.UseRouting();
-
-// CORS must come after Routing, before Authentication/Authorization
 app.UseCors();
 
-// Handle preflight requests globally
+// Handle preflight requests
 app.Use(async (context, next) =>
 {
     if (context.Request.Method == "OPTIONS")
@@ -84,11 +79,7 @@ if (app.Environment.IsDevelopment())
 
 app.MapCarter();
 
-// Optional: Add health check endpoint
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", timestamp = DateTime.UtcNow }))
    .WithTags("Health");
-
-// Comment out HTTPS redirection temporarily for testing
-// app.UseHttpsRedirection();
 
 app.Run();
