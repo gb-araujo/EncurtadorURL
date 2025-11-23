@@ -1,4 +1,6 @@
 # 🔗 EncurtadorURL
+<img width="837" height="581" alt="image" src="https://github.com/user-attachments/assets/846af5ea-4bf1-4997-bfbd-fd8f6670bf61" />
+
 
 Projeto de encurtamento de URL de alta performance construído com **.NET 9 (C#)**, utilizando o framework **Carter** para o mapeamento de rotas minimalista (Minimal API) e **Redis** como banco de dados de chave-valor em memória para lookups instantâneos.
 
