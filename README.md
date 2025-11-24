@@ -20,9 +20,10 @@ O Frontend é estático (HTML/JS) e pode ser hospedado separadamente.
 
 ## 🎯 Links de Produção
 
-- **Frontend**: https://encurtador-omega.vercel.app  
-- **Backend**: https://encurtadorurl-c3lm.onrender.com  
-- **Health Check**: https://encurtadorurl-c3lm.onrender.com/health  
+- **Frontend**: https://encurtador-omega.vercel.app || https://encurtador.gabrielaraujo.app/
+
+- **Backend**: https://encurtadorurl-c3lm.onrender.com || https://e.gabrielaraujo.app/
+- **Health Check**: https://encurtadorurl-c3lm.onrender.com/health || https://e.gabrielaraujo.app/health
 
 ⚠️ Observação: No plano gratuito do Render pode ocorrer lentidão na primeira requisição (**cold start**).
 
@@ -35,18 +36,18 @@ Isso significa que a mesma URL sempre gera o mesmo código curto, tornando o pro
 
 ### 📌 Fluxo de Encurtamento
 
-1. Recebe URL longa do frontend  
-2. Calcula hash SHA-256  
-3. Converte para Base64 URL-safe (8 caracteres)  
-4. Armazena no Redis com TTL de 30 dias  
-5. Retorna a URL curta formatada  
+1. Recebe URL longa do frontend
+2. Calcula hash SHA-256
+3. Converte para Base64 URL-safe (8 caracteres)
+4. Armazena no Redis com TTL de 30 dias
+5. Retorna a URL curta formatada
 
 ### 📌 Fluxo de Redirecionamento
 
-1. Recebe o `chunk`  
-2. Busca no Redis  
-3. Redireciona com HTTP **302**  
-4. Se não existir, retorna **404**  
+1. Recebe o `chunk`
+2. Busca no Redis
+3. Redireciona com HTTP **302**
+4. Se não existir, retorna **404**
 
 API e Frontend são separados para permitir deploy independente e facilitar escalabilidade.
 
@@ -56,23 +57,28 @@ API e Frontend são separados para permitir deploy independente e facilitar esca
 
 ### ✅ Pré-requisitos
 
-- .NET 9 SDK  
-- Redis instalado ou em container  
-- Docker (opcional)  
+- .NET 9 SDK
+- Redis instalado ou em container
+- Docker (opcional)
 
 ### ✅ Backend
 
 \`\`\`bash
+
 # Clone o repositório
+
 git clone https://github.com/gb-araujo/EncurtadorURL
 
 # Entre na pasta
+
 cd EncurtadorURL
 
 # Configure a conexão Redis em appsettings.json
+
 "Redis": "localhost:6379"
 
 # Execute
+
 dotnet run
 \`\`\`
 
@@ -82,6 +88,7 @@ http://localhost:5000
 \`\`\`
 
 ### Redis
+
 Rodar com docker:
 
 docker run -d --name redis -p 6379:6379 redis
@@ -94,18 +101,18 @@ Abra o \`index.html\` diretamente no navegador ou sirva em qualquer host estáti
 
 ## 📚 API Reference
 
-| Rota       | Método | Descrição                          |
-| ---------- | ------ | ---------------------------------- |
-| \`/urls\`    | POST   | Cria ou retorna a URL curta        |
-| \`/{chunk}\` | GET    | Redireciona para a URL original    |
-| \`/health\`  | GET    | Verifica status da aplicação       |
+| Rota         | Método | Descrição                       |
+| ------------ | ------ | ------------------------------- |
+| \`/urls\`    | POST   | Cria ou retorna a URL curta     |
+| \`/{chunk}\` | GET    | Redireciona para a URL original |
+| \`/health\`  | GET    | Verifica status da aplicação    |
 
 ## ⚠️ Limitações
 
-- Plano gratuito do Render pode causar **lentidão inicial** (cold start)  
-- URLs expiram após 30 dias  
+- Plano gratuito do Render pode causar **lentidão inicial** (cold start)
+- URLs expiram após 30 dias
 
---- 
+---
 
 ## 🤝 Contribuições
 
