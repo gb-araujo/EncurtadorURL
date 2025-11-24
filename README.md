@@ -1,12 +1,12 @@
 # 🔗 EncurtadorURL
-<img width="837" height="581" alt="image" src="https://github.com/user-attachments/assets/846af5ea-4bf1-4997-bfbd-fd8f6670bf61" />
 
+Aplicação para encurtamento de URLs, focada em **baixa latência** e simplicidade.  
+O backend é construído com **.NET 9 (C#)** usando **Carter (Minimal API)** e **Redis** para armazenamento em memória.  
+O Frontend é estático (HTML/JS) e pode ser hospedado separadamente.
 
-Projeto de encurtamento de URL de alta performance construído com **.NET 9 (C#)**, utilizando o framework **Carter** para o mapeamento de rotas minimalista (Minimal API) e **Redis** como banco de dados de chave-valor em memória para lookups instantâneos.
+---
 
-O Front-end é uma aplicação estática em HTML/JavaScript projetada para ser hospedada separadamente (Vercel) e consumir a API.
-
-## ✨ Tecnologias Chave
+## ✨ Tecnologias Principais
 
 | Componente        | Tecnologia                       |
 | ----------------- | -------------------------------- |
@@ -16,35 +16,97 @@ O Front-end é uma aplicação estática em HTML/JavaScript projetada para ser h
 | **Deploy**        | Render (API) + Vercel (Frontend) |
 | **Container**     | Docker                           |
 
+---
+
 ## 🎯 Links de Produção
 
-- **Frontend**: [encurtador-omega.vercel.app](https://encurtador-omega.vercel.app)
-- **Backend**: [encurtadorurl-c3lm.onrender.com](https://encurtadorurl-c3lm.onrender.com)
-- **Health Check**: [encurtadorurl-c3lm.onrender.com/health](https://encurtadorurl-c3lm.onrender.com/health)
+- **Frontend**: https://encurtador-omega.vercel.app  
+- **Backend**: https://encurtadorurl-c3lm.onrender.com  
+- **Health Check**: https://encurtadorurl-c3lm.onrender.com/health  
 
-## ⚙️ Arquitetura
+⚠️ Observação: No plano gratuito do Render pode ocorrer lentidão na primeira requisição (**cold start**).
 
-O projeto utiliza o **Hashing Determinístico (SHA-256)** na `LongUrl`. Isso garante que a mesma URL de entrada sempre produza o mesmo código curto (`chunk`), tornando o processo de criação de links **idempotente** e muito rápido.
+---
 
-### Fluxo de Encurtamento
+## 🧩 Arquitetura
 
-1. **Recebe** URL longa do frontend
-2. **Calcula** hash SHA-256
-3. **Converte** para Base64 URL-safe (8 caracteres)
-4. **Armazena** no Redis com TTL de 30 dias
-5. **Retorna** URL curta formatada
+A aplicação utiliza **hashing determinístico (SHA-256)** na URL original.  
+Isso significa que a mesma URL sempre gera o mesmo código curto, tornando o processo **idempotente** e reduzindo processamento desnecessário.
 
-### Fluxo de Redirecionamento
+### 📌 Fluxo de Encurtamento
 
-1. **Recebe** código curto (`chunk`)
-2. **Busca** URL original no Redis
-3. **Redireciona** com status 302 (Found)
-4. **Cache** automático do Redis
+1. Recebe URL longa do frontend  
+2. Calcula hash SHA-256  
+3. Converte para Base64 URL-safe (8 caracteres)  
+4. Armazena no Redis com TTL de 30 dias  
+5. Retorna a URL curta formatada  
+
+### 📌 Fluxo de Redirecionamento
+
+1. Recebe o `chunk`  
+2. Busca no Redis  
+3. Redireciona com HTTP **302**  
+4. Se não existir, retorna **404**  
+
+API e Frontend são separados para permitir deploy independente e facilitar escalabilidade.
+
+---
+
+## 🚀 Rodando Localmente
+
+### ✅ Pré-requisitos
+
+- .NET 9 SDK  
+- Redis instalado ou em container  
+- Docker (opcional)  
+
+### ✅ Backend
+
+\`\`\`bash
+# Clone o repositório
+git clone https://github.com/gb-araujo/EncurtadorURL
+
+# Entre na pasta
+cd EncurtadorURL
+
+# Configure a conexão Redis em appsettings.json
+"Redis": "localhost:6379"
+
+# Execute
+dotnet run
+\`\`\`
+
+O backend iniciará em:
+\`\`\`
+http://localhost:5000
+\`\`\`
+
+### Redis
+Rodar com docker:
+
+docker run -d --name redis -p 6379:6379 redis
+
+### ✅ Frontend
+
+Abra o \`index.html\` diretamente no navegador ou sirva em qualquer host estático.
+
+---
 
 ## 📚 API Reference
 
 | Rota       | Método | Descrição                          |
 | ---------- | ------ | ---------------------------------- |
-| `/urls/`   | `POST` | Cria ou retorna a URL curta        |
-| `/{chunk}` | `GET`  | Redireciona para a URL longa (302) |
-| `/health`  | `GET`  | Health check da aplicação          |
+| \`/urls\`    | POST   | Cria ou retorna a URL curta        |
+| \`/{chunk}\` | GET    | Redireciona para a URL original    |
+| \`/health\`  | GET    | Verifica status da aplicação       |
+
+## ⚠️ Limitações
+
+- Plano gratuito do Render pode causar **lentidão inicial** (cold start)  
+- URLs expiram após 30 dias  
+
+--- 
+
+## 🤝 Contribuições
+
+Sugestões, issues e pull requests são bem-vindos.

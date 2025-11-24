@@ -8,12 +8,10 @@ const shortLink = document.getElementById("shortLink");
 const copyButton = document.getElementById("copyButton");
 const copyMessage = document.getElementById("message");
 
-// --- URL DINÂMICA DA API ---
 const isLocal =
   window.location.hostname === "localhost" ||
   window.location.hostname === "127.0.0.1";
 
-// Configuração por ambiente
 const API_CONFIG = {
   development: "https://localhost:5000",
   production: "https://e.gabrielaraujo.app",
@@ -22,7 +20,6 @@ const API_CONFIG = {
 const getApiBase = () => {
   if (isLocal) return API_CONFIG.development;
 
-  // Se estiver no Vercel (frontend), usa o backend no Render
   if (window.location.hostname.includes("gabrielaraujo.app")) {
     return API_CONFIG.production;
   }
@@ -33,10 +30,8 @@ const getApiBase = () => {
 
 const API_BASE = getApiBase();
 const API_URL = `${API_BASE}/urls/`;
-console.log("🔗 API Base:", API_BASE); // Para debug
-// --- FIM DA URL DINÂMICA ---
+console.log("🔗 API Base:", API_BASE); // debug
 
-// util: normaliza e valida
 function normalizeUrl(input) {
   let u = input.trim();
   u = u.replace(/\s+/g, "");
@@ -135,14 +130,10 @@ submitButton.addEventListener("click", async () => {
       return;
     }
 
-    // Usa a URL retornada pelo backend — garante protocolo para evitar
-    // links relativos (que geram `https://seu-dominio/currenthost/returned`).
     resultParagraph.style.color = "green";
     resultParagraph.textContent = "URL gerada com sucesso!";
     resultContainer.style.display = "flex";
 
-    // Normaliza: se o backend não retornou o esquema (http/https), prefixa
-    // com https://. Também cobre retornos iniciando com '//' (esquema relativo).
     let displayUrl = returned;
     if (/^\/\//.test(displayUrl)) {
       displayUrl = "https:" + displayUrl;

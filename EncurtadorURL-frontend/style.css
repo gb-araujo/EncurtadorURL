@@ -6,9 +6,6 @@
   font-family: "Inter", system-ui, sans-serif;
 }
 
-/* ===============================
-   TEMA PADRÃO (LIGHT)
-================================ */
 :root {
   --bg: #ffffff;
   --text: #222;
@@ -30,7 +27,6 @@ body {
   transition: background 0.3s, color 0.3s;
 }
 
-/* Dark Mode */
 body.dark {
   --bg: #0b0b0d;
   --text: #e8e8e8;
@@ -41,7 +37,6 @@ body.dark {
   --neon-soft: rgba(0, 234, 255, 0.3);
 }
 
-/* Título */
 header h1 {
   text-align: center;
   font-size: 1.8rem;
@@ -57,7 +52,6 @@ header h1 {
   transition: color 0.3s, border-color 0.3s;
 }
 
-/* Card */
 aside {
   background: var(--card);
   padding: 2rem;
@@ -67,7 +61,6 @@ aside {
   transition: background 0.3s, border-color 0.3s;
 }
 
-/* Label */
 label {
   display: flex;
   flex-direction: column;
@@ -78,7 +71,6 @@ label {
   transition: color 0.3s;
 }
 
-/* Input */
 input[type="url"] {
   padding: 0.8rem;
   border-radius: 0.5rem;
@@ -96,7 +88,6 @@ input[type="url"]:focus {
   outline: none;
 }
 
-/* Botão */
 button {
   background: var(--neon);
   color: #fff;
@@ -112,7 +103,6 @@ button:hover {
   background: #009fb0;
 }
 
-/* Botão modo claro/escuro */
 #themeToggle {
   background: transparent;
   color: var(--neon);
@@ -128,7 +118,6 @@ button:hover {
   color: #0b0b0d;
 }
 
-/* Resultado */
 #urlResult {
   margin-top: 1.2rem;
   font-size: 0.95rem;
@@ -136,7 +125,6 @@ button:hover {
   word-break: break-all;
 }
 
-/* Responsivo */
 @media (max-width: 480px) {
   header h1 {
     font-size: 1.4rem;
