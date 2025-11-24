@@ -24,7 +24,7 @@ const getApiBase = () => {
   if (isLocal) return API_CONFIG.development;
 
   // Se estiver no Vercel (frontend), usa o backend no Render
-  if (window.location.hostname.includes("vercel.app")) {
+  if (window.location.hostname.includes("gabrielaraujo.app")) {
     return API_CONFIG.production;
   }
 
