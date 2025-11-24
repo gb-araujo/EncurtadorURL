@@ -15,7 +15,7 @@ const isLocal =
 
 // Configuração por ambiente
 const API_CONFIG = {
-  development: "https://localhost:7000",
+  development: "https://localhost:5000",
   production: "https://e.gabrielaraujo.app",
 };
 
@@ -135,14 +135,31 @@ submitButton.addEventListener("click", async () => {
       return;
     }
 
-    // Usa a URL retornada pelo backend diretamente
+    // Usa a URL retornada pelo backend — garante protocolo para evitar
+    // links relativos (que geram `https://seu-dominio/currenthost/returned`).
     resultParagraph.style.color = "green";
     resultParagraph.textContent = "URL gerada com sucesso!";
     resultContainer.style.display = "flex";
-    shortLink.href = returned;
-    shortLink.textContent = returned;
 
-    console.log("shortUrl final exibido:", returned);
+    // Normaliza: se o backend não retornou o esquema (http/https), prefixa
+    // com https://. Também cobre retornos iniciando com '//' (esquema relativo).
+    let displayUrl = returned;
+    if (/^\/\//.test(displayUrl)) {
+      displayUrl = "https:" + displayUrl;
+    } else if (!/^https?:\/\//i.test(displayUrl)) {
+      displayUrl = "https://" + displayUrl;
+    }
+
+    shortLink.href = displayUrl;
+    shortLink.textContent = displayUrl;
+
+    console.log(
+      "shortUrl final exibido:",
+      displayUrl,
+      "(bruto:",
+      returned,
+      ")"
+    );
   } catch (error) {
     console.error("Fetch error:", error);
     resultParagraph.style.color = "red";
