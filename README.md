@@ -20,10 +20,10 @@ O Frontend é estático (HTML/JS) e pode ser hospedado separadamente.
 
 ## 🎯 Links de Produção
 
-- **Frontend**: https://encurtador-omega.vercel.app || https://encurtador.gabrielaraujo.app/
+- **Frontend**: https://encurtador.gabrielaraujo.app/
 
-- **Backend**: https://encurtadorurl-c3lm.onrender.com || https://e.gabrielaraujo.app/
-- **Health Check**: https://encurtadorurl-c3lm.onrender.com/health || https://e.gabrielaraujo.app/health
+- **Backend**: https://e.gabrielaraujo.app/
+- **Health Check**: https://e.gabrielaraujo.app/health
 
 ⚠️ Observação: No plano gratuito do Render pode ocorrer lentidão na primeira requisição (**cold start**).
 
