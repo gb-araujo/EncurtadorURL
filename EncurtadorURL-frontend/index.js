@@ -16,8 +16,7 @@ const isLocal =
 // Configuração por ambiente
 const API_CONFIG = {
   development: "https://localhost:7000",
-  production: "https://encurtadorurl-c3lm.onrender.com",
-  custom: "https://e.gabrielaraujo.app",
+  production: "https://e.gabrielaraujo.app",
 };
 
 const getApiBase = () => {
