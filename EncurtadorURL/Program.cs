@@ -50,12 +50,12 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
     {
         policy.WithOrigins(
-            "http://127.0.0.1:5500",    // Live Server
-            "http://localhost:3000",    // React/Vue
-            "http://localhost:8080",    // Vite
-            "http://localhost:5500",    // Outro Live Server
+            "http://127.0.0.1:5500",    
+            "http://localhost:3000",   
+            "http://localhost:8080",    
+            "http://localhost:5500",   
             "https://encurtador-omega.vercel.app",
-            "https://encurtador.gabrielaraujo.app"            //  // Seu frontend produção
+            "https://encurtador.gabrielaraujo.app"            
         )
         .AllowAnyMethod()
         .AllowAnyHeader()
@@ -117,7 +117,7 @@ static string GetRedisConnectionString(WebApplicationBuilder builder)
         return configConnectionString;
     }
 
-    // 3. Fallback desenvolvimento
+    // Fallback desenvolvimento
     if (builder.Environment.IsDevelopment())
     {
         Console.WriteLine("🔧 Desenvolvimento: usando localhost:6379");
