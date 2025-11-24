@@ -54,7 +54,8 @@ builder.Services.AddCors(options =>
             "http://localhost:3000",    // React/Vue
             "http://localhost:8080",    // Vite
             "http://localhost:5500",    // Outro Live Server
-            "https://encurtador-omega.vercel.app"  // Seu frontend produção
+            "https://encurtador-omega.vercel.app",
+            "https://encurtador.gabrielaraujo.app"            //  // Seu frontend produção
         )
         .AllowAnyMethod()
         .AllowAnyHeader()
