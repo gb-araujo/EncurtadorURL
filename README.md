@@ -1,119 +1,103 @@
-# 🔗 EncurtadorURL
+# EncurtadorURL
 
-Aplicação para encurtamento de URLs, focada em **baixa latência** e simplicidade.  
-O backend é construído com **.NET 9 (C#)** usando **Carter (Minimal API)** e **Redis** para armazenamento em memória.  
-O Frontend é estático (HTML/JS) e pode ser hospedado separadamente.
+Aplicacao para encurtamento de URLs com backend em .NET 9, Redis como armazenamento key-value e frontend estatico. O projeto prioriza simplicidade, baixa latencia e deploy separado entre API e interface web.
 
----
+## Links de producao
 
-## ✨ Tecnologias Principais
+- Frontend: https://encurtador.gabrielaraujo.app/
+- Backend: https://e.gabrielaraujo.app/
+- Health check: https://e.gabrielaraujo.app/health
 
-| Componente        | Tecnologia                       |
-| ----------------- | -------------------------------- |
-| **Backend**       | .NET 9 (C#)                      |
-| **Roteamento**    | Carter (Minimal API)             |
-| **Armazenamento** | Redis (Key-Value Store)          |
-| **Deploy**        | Render (API) + Vercel (Frontend) |
-| **Container**     | Docker                           |
+> Observacao: no plano gratuito do Render, a primeira requisicao pode demorar por causa de cold start.
 
----
+## Tecnologias
 
-## 🎯 Links de Produção
+| Componente | Tecnologia |
+| --- | --- |
+| Backend | .NET 9, C# |
+| API | Carter / Minimal API |
+| Armazenamento | Redis |
+| Frontend | HTML, CSS e JavaScript |
+| Container | Docker |
+| Deploy | Render + Vercel |
 
-- **Frontend**: https://encurtador.gabrielaraujo.app/
+## Como funciona
 
-- **Backend**: https://e.gabrielaraujo.app/
-- **Health Check**: https://e.gabrielaraujo.app/health
+A API gera um identificador curto a partir da URL original e grava o relacionamento no Redis com TTL de 30 dias.
 
-⚠️ Observação: No plano gratuito do Render pode ocorrer lentidão na primeira requisição (**cold start**).
+Fluxo de encurtamento:
 
----
+1. O frontend envia a URL longa para a API.
+2. A API calcula um hash SHA-256 deterministico.
+3. O hash e convertido para Base64 URL-safe e reduzido para 8 caracteres.
+4. A relacao `codigo -> URL original` e salva no Redis.
+5. A API retorna a URL curta.
 
-## 🧩 Arquitetura
+Fluxo de redirecionamento:
 
-A aplicação utiliza **hashing determinístico (SHA-256)** na URL original.  
-Isso significa que a mesma URL sempre gera o mesmo código curto, tornando o processo **idempotente** e reduzindo processamento desnecessário.
+1. A API recebe o `chunk` da URL curta.
+2. Busca a URL original no Redis.
+3. Redireciona com HTTP `302`.
+4. Retorna `404` caso o codigo nao exista ou tenha expirado.
 
-### 📌 Fluxo de Encurtamento
-
-1. Recebe URL longa do frontend
-2. Calcula hash SHA-256
-3. Converte para Base64 URL-safe (8 caracteres)
-4. Armazena no Redis com TTL de 30 dias
-5. Retorna a URL curta formatada
-
-### 📌 Fluxo de Redirecionamento
-
-1. Recebe o `chunk`
-2. Busca no Redis
-3. Redireciona com HTTP **302**
-4. Se não existir, retorna **404**
-
-API e Frontend são separados para permitir deploy independente e facilitar escalabilidade.
-
----
-
-## 🚀 Rodando Localmente
-
-### ✅ Pré-requisitos
+## Requisitos
 
 - .NET 9 SDK
-- Redis instalado ou em container
-- Docker (opcional)
+- Redis local ou em container
+- Docker opcional
 
-### ✅ Backend
+## Rodando localmente
 
-\`\`\`bash
-
-# Clone o repositório
-
-git clone https://github.com/gb-araujo/EncurtadorURL
-
-# Entre na pasta
-
+```bash
+git clone https://github.com/gb-araujo/EncurtadorURL.git
 cd EncurtadorURL
+```
 
-# Configure a conexão Redis em appsettings.json
+Suba o Redis com Docker:
 
-"Redis": "localhost:6379"
+```bash
+docker run -d --name redis -p 6379:6379 redis:alpine
+```
 
-# Execute
+Configure a connection string em `appsettings.json`, `appsettings.Development.json` ou variavel de ambiente:
 
-dotnet run
-\`\`\`
+```json
+{
+  "ConnectionStrings": {
+    "Redis": "localhost:6379"
+  }
+}
+```
 
-O backend iniciará em:
-\`\`\`
-http://localhost:5000
-\`\`\`
+Execute o backend:
 
-### Redis
+```bash
+dotnet run --project EncurtadorURL
+```
 
-Rodar com docker:
+A API ficara disponivel na URL exibida pelo terminal. Em desenvolvimento, o fallback usa `localhost:6379` para o Redis.
 
-docker run -d --name redis -p 6379:6379 redis
+## Frontend
 
-### ✅ Frontend
+O frontend e estatico. Abra o `index.html` no navegador ou sirva os arquivos em qualquer host estatico.
 
-Abra o \`index.html\` diretamente no navegador ou sirva em qualquer host estático.
+## API Reference
 
----
+| Metodo | Rota | Descricao |
+| --- | --- | --- |
+| `POST` | `/urls` | Cria ou retorna uma URL curta |
+| `GET` | `/{chunk}` | Redireciona para a URL original |
+| `GET` | `/health` | Verifica status da aplicacao |
 
-## 📚 API Reference
+## Limitacoes atuais
 
-| Rota         | Método | Descrição                       |
-| ------------ | ------ | ------------------------------- |
-| \`/urls\`    | POST   | Cria ou retorna a URL curta     |
-| \`/{chunk}\` | GET    | Redireciona para a URL original |
-| \`/health\`  | GET    | Verifica status da aplicação    |
+- URLs expiram apos 30 dias.
+- O hash deterministico faz a mesma URL gerar o mesmo codigo.
+- Redis precisa estar disponivel para criacao e redirecionamento de URLs.
 
-## ⚠️ Limitações
+## Melhorias futuras
 
-- Plano gratuito do Render pode causar **lentidão inicial** (cold start)
-- URLs expiram após 30 dias
-
----
-
-## 🤝 Contribuições
-
-Sugestões, issues e pull requests são bem-vindos.
+- Painel para acompanhar quantidade de acessos.
+- Codigo curto customizavel.
+- Testes automatizados para API e regras de expiracao.
+- Rate limiting para proteger o endpoint de criacao.
