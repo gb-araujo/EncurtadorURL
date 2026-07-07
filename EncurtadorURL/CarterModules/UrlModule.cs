@@ -2,19 +2,16 @@
 using System.Security.Cryptography;
 using System.Text;
 using StackExchange.Redis;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
+using EncurtadorURL.DTOs;
 
 namespace EncurtadorURL.CarterModules;
 
 public class UrlModule : CarterModule
 {
-    private readonly string _baseUrl;
-
-    public UrlModule(IOptions<AppSettings> appSettings) : base()
-    {
-        _baseUrl = appSettings.Value.BaseUrl;
-    }
+    private const int MaxUrlLength = 2048;
+    private const int MaxCollisionAttempts = 5;
+    private static readonly TimeSpan UrlTtl = TimeSpan.FromDays(30);
 
     public override void AddRoutes(IEndpointRouteBuilder app)
     {
@@ -22,25 +19,42 @@ public class UrlModule : CarterModule
 
         urls.MapPost("/", async (CreateShortUrlRequest req, IConnectionMultiplexer redis, IOptions<AppSettings> appSettings) =>
         {
-            using var sha256 = SHA256.Create();
-            var inputBytes = Encoding.UTF8.GetBytes(req.LongUrl);
-            var hashBytes = sha256.ComputeHash(inputBytes);
-
-            string chunk = Convert.ToBase64String(hashBytes).Replace("/", "-").Replace("+", "_").Substring(0, 8);
-
-            IDatabase db = redis.GetDatabase();
-            string baseUrl = appSettings.Value.BaseUrl;
-            string shortUrlResult = $"{baseUrl}/{chunk}";
-
-            RedisValue existingUrl = await db.StringGetAsync(chunk);
-
-            if (existingUrl.IsNullOrEmpty)
+            if (!TryNormalizeUrl(req.LongUrl, out string longUrl))
             {
-                await db.StringSetAsync(chunk, req.LongUrl, TimeSpan.FromDays(30));
+                return Results.BadRequest(new
+                {
+                    message = $"URL inválida. Apenas URLs http/https com até {MaxUrlLength} caracteres são aceitas."
+                });
             }
 
-            return Results.Ok(new ShortUrlResponse(req.LongUrl, shortUrlResult));
-        });
+            IDatabase db = redis.GetDatabase();
+            string baseUrl = appSettings.Value.BaseUrl.TrimEnd('/');
+
+            // Colisões são raras com 8 caracteres, mas possíveis: se o código já
+            // pertence a outra URL, gera um novo código em vez de devolver o link errado.
+            for (int attempt = 0; attempt < MaxCollisionAttempts; attempt++)
+            {
+                string chunk = GenerateChunk(longUrl, attempt);
+                string shortUrl = $"{baseUrl}/{chunk}";
+
+                RedisValue existingUrl = await db.StringGetAsync(chunk);
+
+                if (existingUrl.IsNullOrEmpty)
+                {
+                    await db.StringSetAsync(chunk, longUrl, UrlTtl);
+                    return Results.Created(shortUrl, new ShortUrlResponse(longUrl, shortUrl));
+                }
+
+                if (existingUrl == longUrl)
+                {
+                    return Results.Ok(new ShortUrlResponse(longUrl, shortUrl));
+                }
+            }
+
+            return Results.Problem(
+                detail: "Não foi possível gerar um código único para esta URL. Tente novamente.",
+                statusCode: StatusCodes.Status500InternalServerError);
+        }).RequireRateLimiting("shorten");
 
         app.MapGet("/{chunk}", async (string chunk, IConnectionMultiplexer redis) =>
         {
@@ -49,15 +63,41 @@ public class UrlModule : CarterModule
 
             if (longUrlValue.IsNullOrEmpty)
             {
-                return Results.StatusCode(StatusCodes.Status404NotFound);
+                return Results.NotFound();
             }
-            else
-            {
-                return Results.Redirect(longUrlValue.ToString());
-            }
+
+            return Results.Redirect(longUrlValue.ToString());
         }).ExcludeFromDescription();
     }
-}
 
-public record CreateShortUrlRequest(string LongUrl);
-public record ShortUrlResponse(string LongUrl, string ShortUrl);
+    // Validação no servidor: o cliente também valida, mas nunca é confiável.
+    // Sem isso o serviço aceita qualquer string e vira um open redirect.
+    private static bool TryNormalizeUrl(string? input, out string normalized)
+    {
+        normalized = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(input) || input.Length > MaxUrlLength)
+            return false;
+
+        if (!Uri.TryCreate(input.Trim(), UriKind.Absolute, out Uri? uri))
+            return false;
+
+        if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+            return false;
+
+        normalized = uri.ToString();
+        return true;
+    }
+
+    private static string GenerateChunk(string url, int attempt)
+    {
+        // attempt 0 mantém o formato original (hash puro da URL) para
+        // preservar os códigos já emitidos antes desta mudança.
+        string input = attempt == 0 ? url : $"{url}:{attempt}";
+        byte[] hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+
+        return Convert.ToBase64String(hashBytes)
+            .Replace("/", "-")
+            .Replace("+", "_")[..8];
+    }
+}
