@@ -1,6 +1,8 @@
 using Carter;
 using EncurtadorURL;
+using Microsoft.AspNetCore.RateLimiting;
 using StackExchange.Redis;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,23 +46,35 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     }
 });
 
-// CORS
+// CORS: origens vêm da configuração (AppSettings:AllowedOrigins),
+// permitindo ajustar por ambiente sem recompilar.
+var allowedOrigins = builder.Configuration
+    .GetSection("AppSettings:AllowedOrigins")
+    .Get<string[]>() ?? Array.Empty<string>();
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins(
-            "http://127.0.0.1:5500",    
-            "http://localhost:3000",   
-            "http://localhost:8080",    
-            "http://localhost:5500",   
-            "https://encurtador-omega.vercel.app",
-            "https://encurtador.gabrielaraujo.app"            
-        )
-        .AllowAnyMethod()
-        .AllowAnyHeader()
-        .AllowCredentials();
+        policy.WithOrigins(allowedOrigins)
+            .AllowAnyMethod()
+            .AllowAnyHeader();
     });
+});
+
+// Rate limiting: o endpoint de criação é público e de escrita,
+// então limita por IP para evitar abuso.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("shorten", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(1)
+            }));
 });
 
 var app = builder.Build();
@@ -68,20 +82,7 @@ var app = builder.Build();
 // Middleware
 app.UseRouting();
 app.UseCors();
-
-app.Use(async (context, next) =>
-{
-    if (context.Request.Method == "OPTIONS")
-    {
-        context.Response.Headers.Add("Access-Control-Allow-Origin", context.Request.Headers["Origin"]);
-        context.Response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-        context.Response.Headers.Add("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Origin, Accept");
-        context.Response.StatusCode = 200;
-        await context.Response.CompleteAsync();
-        return;
-    }
-    await next();
-});
+app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())
 {
